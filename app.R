@@ -1,6 +1,11 @@
 ## app.R ##
 library(shiny)
 library(shinydashboard)
+library(leaflet)
+library(dplyr)
+library(curl) # make the jsonlite suggested dependency explicit
+library(XML)
+
 
 #A dashboard has three parts: a header, a sidebar, and a body. 
 ui <- dashboardPage(skin="black",
@@ -41,7 +46,7 @@ ui <- dashboardPage(skin="black",
               tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
               
               uiOutput("choose_collection"),
-              leafletOutput('map',width = "100%")
+              leafletOutput("map",width = "100%")
               
       ),
       tabItem(tabName = "data"),
@@ -50,10 +55,6 @@ ui <- dashboardPage(skin="black",
   )
 )
 
-library(leaflet)
-library(dplyr)
-library(curl) # make the jsonlite suggested dependency explicit
-library(XML)
 
 getCollection <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/boo.hts?service=Hilltop&request=CollectionList",sep=""))
 collections<-sapply(getNodeSet(getCollection,"//Collection/@Name"),as.character)
