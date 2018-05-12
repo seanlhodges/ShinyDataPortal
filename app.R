@@ -49,8 +49,15 @@ ui <- dashboardPage(skin="black",
               leafletOutput("map",width = "100%")
               
       ),
-      tabItem(tabName = "data"),
-      tabItem(tabName = "reports")
+      tabItem(tabName = "data",
+              h2("Data lists and summaries")
+      ),
+      tabItem(tabName = "location",
+              h2("Monitoring site attributes")
+      )
+      tabItem(tabName = "reports",
+              h2("Printable / downloadable reports")
+      )
     )
   )
 )
