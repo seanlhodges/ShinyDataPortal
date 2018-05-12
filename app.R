@@ -11,11 +11,13 @@ library(XML)
 ui <- dashboardPage(skin="black",
   dashboardHeader(title = "Natural Resource Data Portal"),
   dashboardSidebar(
-    menuItem("Dashboards", tabName = "dashboard", icon = icon("dashboard")),
-    menuItem("Maps", tabName = "maps", icon = icon("globe")),
-    menuItem("Data", tabName = "data", icon = icon("th")),
-    menuItem("Location", tabName = "location", icon = icon("map-marker")),
-    menuItem("Reports", tabName = "reports", icon = icon("book"))
+    sidebarMenu(
+      menuItem("Dashboards", tabName = "dashboard", icon = icon("dashboard")),
+      menuItem("Maps", tabName = "maps", icon = icon("globe")),
+      menuItem("Data", tabName = "data", icon = icon("th")),
+      menuItem("Location", tabName = "location", icon = icon("map-marker")),
+      menuItem("Reports", tabName = "reports", icon = icon("book"))
+    )
   ),
   dashboardBody(
     tabItems(
