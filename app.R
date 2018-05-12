@@ -54,7 +54,7 @@ ui <- dashboardPage(skin="black",
       ),
       tabItem(tabName = "location",
               h2("Monitoring site attributes")
-      )
+      ),
       tabItem(tabName = "reports",
               h2("Printable / downloadable reports")
       )
