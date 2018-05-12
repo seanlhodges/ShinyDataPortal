@@ -1,4 +1,18 @@
 ## app.R ##
+
+## dashboard-mimic-alpha
+## A mimic of the dashboard available through https://envdata.boprc.govt.nz
+## UI based on shinydashboard template
+## Script developed by: Sean Hodges
+## Updated on: 13 May 2018
+
+## Purpose: To deliver an interactive dashboard that allows
+##          access to the publically accessible natural
+##          resource data collected as part of various
+##          automated monitoring networks in the Horizons region
+
+
+## Load libraries required
 library(shiny)
 library(shinydashboard)
 library(leaflet)
@@ -6,6 +20,8 @@ library(dplyr)
 library(curl) # make the jsonlite suggested dependency explicit
 library(XML)
 
+
+## ui -----------
 
 #A dashboard has three parts: a header, a sidebar, and a body. 
 ui <- dashboardPage(skin="black",
@@ -64,6 +80,7 @@ ui <- dashboardPage(skin="black",
   )
 )
 
+## Code supporting interface and reactive functions --------
 
 getCollection <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/boo.hts?service=Hilltop&request=CollectionList",sep=""))
 collections<-sapply(getNodeSet(getCollection,"//Collection/@Name"),as.character)
@@ -74,6 +91,9 @@ site<-sapply(site, as.character)
 lat <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Latitude"), xmlValue))
 lon <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Longitude"), xmlValue))
 sites <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
+
+
+## server -----------
 
 server <- function(input, output, session) {
   
