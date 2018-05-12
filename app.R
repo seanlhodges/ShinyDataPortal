@@ -9,7 +9,7 @@ library(XML)
 
 #A dashboard has three parts: a header, a sidebar, and a body. 
 ui <- dashboardPage(skin="black",
-  dashboardHeader(title = "Natural Resource Data<br />Portal"),
+  dashboardHeader(title = "Natural Resource Data Portal"),
   dashboardSidebar(
     menuItem("Dashboards", tabName = "dashboard", icon = icon("dashboard")),
     menuItem("Maps", tabName = "maps", icon = icon("globe")),
