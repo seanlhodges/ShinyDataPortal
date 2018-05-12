@@ -21,9 +21,33 @@ library(curl) # make the jsonlite suggested dependency explicit
 library(XML)
 
 
+## Code supporting interface and reactive functions --------
+
+# * Deliver list of collections *
+getCollection <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/boo.hts?service=Hilltop&request=CollectionList",sep=""))
+collections<-sapply(getNodeSet(getCollection,"//Collection/@Name"),as.character)
+
+# * Deliver list of all sites   *
+getSites <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteList&location=LatLong",sep=""))
+site<-getNodeSet(getSites,"//Latitude/../@Name")
+site<-sapply(site, as.character)
+lat <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Latitude"), xmlValue))
+lon <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Longitude"), xmlValue))
+# Construct dataframe that can be mapped
+sites <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
+
+# Reactive functions needed
+# 1. Ability to dynamically get list of sites for a single collection
+# 2. Ability to dynamically get list of available measurements for a single site
+
+
 ## ui -----------
 
+# -----------------------------------
+# * Overall dashboard configuration *
+
 #A dashboard has three parts: a header, a sidebar, and a body. 
+
 ui <- dashboardPage(skin="black",
   dashboardHeader(title = "Natural Resource Data Portal"),
   dashboardSidebar(
@@ -35,9 +59,14 @@ ui <- dashboardPage(skin="black",
       menuItem("Reports", tabName = "reports", icon = icon("book"))
     )
   ),
+
+
   dashboardBody(
     tabItems(
-      # First tab content
+      # -------------------------
+      #     First tab content
+      # * Description of portal *
+      # -------------------------
       tabItem(tabName = "dashboard",
               tags$style(".highlight {color:#E87722;font-size:1.5em}"),
               
@@ -57,7 +86,10 @@ ui <- dashboardPage(skin="black",
               
       ),
       
-      # Second tab content
+      # -------------------------
+      #    Second tab content
+      # *  Monitoring site map  *
+      # -------------------------
       tabItem(tabName = "maps",
               #h2("Map content"),
               
@@ -67,30 +99,47 @@ ui <- dashboardPage(skin="black",
               leafletOutput("map",width = "100%")
               
       ),
+
+      # -------------------------
+      #     Third tab content
+      # *  Chart of Time series *
+      # -------------------------
+    
+      # Link chart to site and measurement selected on map
+      # Also have dropdowns for:
+       #         - Monitoring site
+       #         - Measurement
+       #         - Time interval to chart
+    
+       # For rainfall measurement show cumulative rainfall
+       # totals over the period requested (day, week, month, yr)
+
       tabItem(tabName = "data",
               h2("Data lists and summaries")
+
+
       ),
+
+      # -------------------------
+      #    Fourth tab content
+      # *  Location attributes  *
+      # -------------------------
       tabItem(tabName = "location",
               h2("Monitoring site attributes")
+
       ),
+
+
+      # -------------------------
+      #     Fifth tab content
+      # * Available PDF reports *
+      # -------------------------
       tabItem(tabName = "reports",
               h2("Printable / downloadable reports")
       )
     )
   )
 )
-
-## Code supporting interface and reactive functions --------
-
-getCollection <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/boo.hts?service=Hilltop&request=CollectionList",sep=""))
-collections<-sapply(getNodeSet(getCollection,"//Collection/@Name"),as.character)
-
-getSites <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteList&location=LatLong",sep=""))
-site<-getNodeSet(getSites,"//Latitude/../@Name")
-site<-sapply(site, as.character)
-lat <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Latitude"), xmlValue))
-lon <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Longitude"), xmlValue))
-sites <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
 
 
 ## server -----------
