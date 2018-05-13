@@ -39,7 +39,7 @@ sites <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
 # Reactive functions needed
 # 1. Ability to dynamically get list of sites for a single collection
 # 2. Ability to dynamically get list of available measurements for a single site
-
+# 3. Ability to dynamically get time series data from site/meausurement combo
 
 ## ui -----------
 
@@ -204,6 +204,38 @@ server <- function(input, output, session) {
     MeasurementName <- paste(dm$MeasurementName," [",dm$DataSourceName,"]",sep="")
   })
   
+  # Reactive functions defined
+  # 3. Ability to dynamically get time series data from site/meausurement combo
+  SiteMeasurementData <- reactive({
+    getMeas <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=MeasurementList&Site=",input$data_siteName,sep=""))
+    # Need to construct a flat table of:
+    #  DataSourceName, MeasurmentName, DataType, Interpolation, Format, Units, Available Start Date, Available End Date
+    #Vector of DataSource Names
+    ds <- sapply(getNodeSet(getMeas,"//DataSource[TSType='StdSeries']/@Name"),as.character)
+    
+    #for each datasource, get the available measurement names
+    for(i in 1:length(ds)){
+      if(i==1){
+        dm <- sapply(getNodeSet(getMeas,paste("//DataSource[TSType='StdSeries' and @Name='",ds[i],"']/Measurement/@Name",sep="")),as.character)
+        dm <- as.data.frame(dm, stringsAsFactors=FALSE)
+        dm$DataSourceName <- ds[i]
+        names(dm) <- c("MeasurementName","DataSourceName")
+      } else {
+        bb <- sapply(getNodeSet(getMeas,paste("//DataSource[TSType='StdSeries' and @Name='",ds[i],"']/Measurement/@Name",sep="")),as.character)
+        bb <- as.data.frame(bb, stringsAsFactors=FALSE)
+        bb$DataSourceName <- ds[i]
+        names(bb) <- c("MeasurementName","DataSourceName")
+        dm <- rbind(dm,bb)
+        rm(bb)
+      } 
+    }
+    
+    # For this constructed dataframe, it will now be possible to extract all the other necessary
+    # element and attribute values through one further for-loop
+    
+    MeasurementName <- paste(dm$MeasurementName," [",dm$DataSourceName,"]",sep="")
+  })
+  
   ## Outputting reactive function values to ui controls
   
   #Drop-down selection box to contain Collection List
@@ -225,9 +257,11 @@ server <- function(input, output, session) {
     selectInput("data_measurementList", "Measurements", as.list(SiteMeasurementList()))
   })
   
+  # Store last zoom button value so we can detect when it's clicked
+  lastZoomButtonValue <- NULL
   
   output$map <- renderLeaflet({
-    leaflet(CollectionList()) %>%  
+    map <- leaflet(CollectionList()) %>%  
       setView(lng = 175, lat = -39.6, zoom = 7) %>%
       addTiles() %>%
       addCircleMarkers(
@@ -239,55 +273,18 @@ server <- function(input, output, session) {
       )  
     #addMarkers(~lon, ~lat, popup = ~as.character(site), label = ~as.character(site))
     #addTiles(options = tileOptions(maxZoom = 28, maxNativeZoom = 19), group = 'OSM')
-  })
-  
-  
-  
-  # Store last zoom button value so we can detect when it's clicked
-  lastZoomButtonValue <- NULL
-  
-  output$busmap <- renderLeaflet({
-    locations <- routeVehicleLocations()
-    if (length(locations) == 0)
-      return(NULL)
-    
-    # Show only selected directions
-    locations <- filter(locations, Direction %in% as.numeric(input$directions))
-    
-    # Four possible directions for bus routes
-    dirPal <- colorFactor(dirColors, names(dirColors))
-    
-    map <- leaflet(locations) %>%
-      addTiles('http://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}.png') %>%
-      addCircleMarkers(
-        ~VehicleLongitude,
-        ~VehicleLatitude,
-        color = ~dirPal(Direction),
-        opacity = 0.8,
-        radius = 8
-      )
-    
-    if (as.numeric(input$routeNum) != 0) {
-      route_shape <- get_route_shape(input$routeNum)
-      
-      map <- addPolylines(map,
-                          route_shape$shape_pt_lon,
-                          route_shape$shape_pt_lat,
-                          fill = FALSE
-      )
-    }
-    
+
     rezoom <- "first"
     # If zoom button was clicked this time, and store the value, and rezoom
     if (!identical(lastZoomButtonValue, input$zoomButton)) {
       lastZoomButtonValue <<- input$zoomButton
       rezoom <- "always"
     }
-    
     map <- map %>% mapOptions(zoomToLimits = rezoom)
-    
     map
-  })
+    
+ })
+
 }
 
 shinyApp(ui, server)
