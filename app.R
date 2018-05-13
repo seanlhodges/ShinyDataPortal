@@ -125,8 +125,11 @@ ui <- dashboardPage(skin="black",
       # *  Location attributes  *
       # -------------------------
       tabItem(tabName = "location",
-              h2("Monitoring site attributes")
-
+              h2("Monitoring site attributes"),
+              selectInput("SiteName", label = b("Select box"),
+                           choices = list(site), 
+                           selected = 1)
+ 
       ),
 
 
@@ -152,7 +155,9 @@ server <- function(input, output, session) {
     selectInput("collection", "Collection", as.list(collections),selected = "Rainfall")
   })
   
-  dataInput <- reactive({
+  # Reactive function defined
+  # 1. Ability to dynamically get list of sites for a single collection
+  CollectionList <- reactive({
     getSites <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteList&location=LatLong&collection=",input$collection,sep=""))
     site<-getNodeSet(getSites,"//Latitude/../@Name")
     site<-sapply(site, as.character)
@@ -160,9 +165,22 @@ server <- function(input, output, session) {
     lon <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Longitude"), xmlValue))
     df <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
   })
+
+
+# Reactive function defined
+  # 2. Ability to dynamically get list of available measurements for a single site
+  SiteMeasurementList <- reactive({
+    getSites <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=MeasurmentList&Site=",input$SiteName,sep=""))
+    site<-getNodeSet(getSites,"//Latitude/../@Name")
+    site<-sapply(site, as.character)
+    lat <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Latitude"), xmlValue))
+    lon <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Longitude"), xmlValue))
+    df <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
+  })
+  
    
   output$map <- renderLeaflet({
-    leaflet(dataInput()) %>%  
+    leaflet(CollectionList()) %>%  
       setView(lng = 175, lat = -39.6, zoom = 7) %>%
       addTiles() %>%
       addCircleMarkers(
