@@ -30,7 +30,7 @@ collections<-sapply(getNodeSet(getCollection,"//Collection/@Name"),as.character)
 # * Deliver list of all sites   *
 getSites <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteList&location=LatLong",sep=""))
 site<-getNodeSet(getSites,"//Latitude/../@Name")
-site<-sapply(site, as.character)
+site<-sapply(site, as.character) # this vector can populate a site dropdown box
 lat <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Latitude"), xmlValue))
 lon <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Longitude"), xmlValue))
 # Construct dataframe that can be mapped
@@ -115,8 +115,13 @@ ui <- dashboardPage(skin="black",
        # totals over the period requested (day, week, month, yr)
 
       tabItem(tabName = "data",
-              h2("Data lists and summaries")
-
+              h2("Data lists and summaries"),
+              fillRow(
+                uiOutput("data_choose_site"),
+                uiOutput("data_choose_measurement"),
+                selectInput("interval",label = "Interval",choices = list("Daily" = 1,"Weekly"=2, "Monthly"=3,"Yearly"=4),selected=2),
+                flex = 1, height = "40px"
+              )
 
       ),
 
@@ -126,9 +131,7 @@ ui <- dashboardPage(skin="black",
       # -------------------------
       tabItem(tabName = "location",
               h2("Monitoring site attributes"),
-              selectInput("SiteName", label = b("Select box"),
-                           choices = list(site), 
-                           selected = 1)
+              uiOutput("location_choose_site")
  
       ),
 
@@ -149,13 +152,7 @@ ui <- dashboardPage(skin="black",
 
 server <- function(input, output, session) {
   
-  
-  #Drop-down selection box for which data set
-  output$choose_collection <- renderUI({
-    selectInput("collection", "Collection", as.list(collections),selected = "Rainfall")
-  })
-  
-  # Reactive function defined
+  # Reactive functions defined
   # 1. Ability to dynamically get list of sites for a single collection
   CollectionList <- reactive({
     getSites <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteList&location=LatLong&collection=",input$collection,sep=""))
@@ -165,20 +162,62 @@ server <- function(input, output, session) {
     lon <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Longitude"), xmlValue))
     df <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
   })
-
-
-# Reactive function defined
+  
+  
+  # Reactive functions defined
   # 2. Ability to dynamically get list of available measurements for a single site
   SiteMeasurementList <- reactive({
-    getSites <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=MeasurmentList&Site=",input$SiteName,sep=""))
-    site<-getNodeSet(getSites,"//Latitude/../@Name")
-    site<-sapply(site, as.character)
-    lat <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Latitude"), xmlValue))
-    lon <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Longitude"), xmlValue))
-    df <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
+    getMeas <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=MeasurementList&Site=",input$data_siteName,sep=""))
+    # Need to construct a flat table of:
+    #  DataSourceName, MeasurmentName, DataType, Interpolation, Format, Units, Available Start Date, Available End Date
+    #Vector of DataSource Names
+    ds <- sapply(getNodeSet(getMeas,"//DataSource[TSType='StdSeries']/@Name"),as.character)
+    
+    #for each datasource, get the available measurement names
+    for(i in 1:length(ds)){
+      if(i==1){
+        dm <- sapply(getNodeSet(getMeas,paste("//DataSource[TSType='StdSeries' and @Name='",ds[i],"']/Measurement/@Name",sep="")),as.character)
+        dm <- as.data.frame(dm, stringsAsFactors=FALSE)
+        dm$DataSourceName <- ds[i]
+        names(dm) <- c("MeasurementName","DataSourceName")
+      } else {
+        bb <- sapply(getNodeSet(getMeas,paste("//DataSource[TSType='StdSeries' and @Name='",ds[i],"']/Measurement/@Name",sep="")),as.character)
+        bb <- as.data.frame(bb, stringsAsFactors=FALSE)
+        bb$DataSourceName <- ds[i]
+        names(bb) <- c("MeasurementName","DataSourceName")
+        dm <- rbind(dm,bb)
+        rm(bb)
+      } 
+    }
+    
+    # For this constructed dataframe, it will now be possible to extract all the other necessary
+    # element and attribute values through one further for-loop
+    
+    MeasurementName <- paste(dm$MeasurementName," [",dm$DataSourceName,"]",sep="")
   })
   
-   
+  ## Outputting reactive function values to ui controls
+  
+  #Drop-down selection box to contain Collection List
+  output$choose_collection <- renderUI({
+    selectInput("collection", "Collection", as.list(collections),selected = "Rainfall")
+  })
+  
+  #Drop-down selection box to contain Site List
+  output$data_choose_site <- renderUI({
+    selectInput("data_siteName", "Site", as.list(site),selected = "Manawatu at Teachers College")
+  })
+  #Drop-down selection box to contain Site List
+  output$location_choose_site <- renderUI({
+    selectInput("location_siteName", "Site", as.list(site),selected = "Manawatu at Teachers College")
+  })
+  
+  #Drop-down selection box to contain Measurement List at a Site
+  output$data_choose_measurement <- renderUI({
+    selectInput("data_measurementList", "Measurements", as.list(SiteMeasurementList()))
+  })
+  
+  
   output$map <- renderLeaflet({
     leaflet(CollectionList()) %>%  
       setView(lng = 175, lat = -39.6, zoom = 7) %>%
@@ -190,9 +229,11 @@ server <- function(input, output, session) {
         opacity = 0.8,
         radius = 5
       )  
-      #addMarkers(~lon, ~lat, popup = ~as.character(site), label = ~as.character(site))
-      #addTiles(options = tileOptions(maxZoom = 28, maxNativeZoom = 19), group = 'OSM')
+    #addMarkers(~lon, ~lat, popup = ~as.character(site), label = ~as.character(site))
+    #addTiles(options = tileOptions(maxZoom = 28, maxNativeZoom = 19), group = 'OSM')
   })
+  
+  
   
   # Store last zoom button value so we can detect when it's clicked
   lastZoomButtonValue <- NULL
