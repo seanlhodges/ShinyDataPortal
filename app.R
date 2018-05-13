@@ -128,7 +128,7 @@ ui <- dashboardPage(skin="black",
                   id="mySiteData",
                   tabPanel("Info"),
                   tabPanel("Chart"),
-                  tabPanel("Data"),
+                  tabPanel("Data", DT::dataTableOutput('SiteMeasurementData')),
                   tabPanel("Statistics")
                 ))
               )
@@ -207,34 +207,29 @@ server <- function(input, output, session) {
   
   # Reactive functions defined
   # 3. Ability to dynamically get time series data from site/meausurement combo
-  SiteMeasurementData <- reactive({
-    getMeas <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=MeasurementList&Site=",input$data_siteName,sep=""))
-    # Need to construct a flat table of:
-    #  DataSourceName, MeasurmentName, DataType, Interpolation, Format, Units, Available Start Date, Available End Date
-    #Vector of DataSource Names
-    ds <- sapply(getNodeSet(getMeas,"//DataSource[TSType='StdSeries']/@Name"),as.character)
+  output$SiteMeasurementData <- DT::renderDataTable({
+    #Get name of datasource in order to pull measurements correctly
+    #Need to use regex to extract text between [ and ]
+    str  <- input$data_measurement
+    expr <- "(?<=\\[)(.*)(?=\\])"
+    ds   <- regmatches(x=str,regexpr(expr,str,perl=TRUE))
     
-    #for each datasource, get the available measurement names
-    for(i in 1:length(ds)){
-      if(i==1){
-        dm <- sapply(getNodeSet(getMeas,paste("//DataSource[TSType='StdSeries' and @Name='",ds[i],"']/Measurement/@Name",sep="")),as.character)
-        dm <- as.data.frame(dm, stringsAsFactors=FALSE)
-        dm$DataSourceName <- ds[i]
-        names(dm) <- c("MeasurementName","DataSourceName")
-      } else {
-        bb <- sapply(getNodeSet(getMeas,paste("//DataSource[TSType='StdSeries' and @Name='",ds[i],"']/Measurement/@Name",sep="")),as.character)
-        bb <- as.data.frame(bb, stringsAsFactors=FALSE)
-        bb$DataSourceName <- ds[i]
-        names(bb) <- c("MeasurementName","DataSourceName")
-        dm <- rbind(dm,bb)
-        rm(bb)
-      } 
+    if(ds=="SCADA Rainfall"|ds=="Rainfall"){
+      chartType <- "Bar"
+      url <- paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Site=",input$data_siteName,"&Measurement=",input$data_measurement,"&TimeInterval=P7D/now&method=Total&interval=1 hour",sep="")
+    } else {
+      chartType <- "Continuous"
+      url <- paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Site=",input$data_siteName,"&Measurement=",input$data_measurement,"&TimeInterval=P7D/now",sep="")
     }
     
-    # For this constructed dataframe, it will now be possible to extract all the other necessary
-    # element and attribute values through one further for-loop
+    getData <- xmlInternalTreeParse(url)
+    DateTime <- sapply(getNodeSet(getData, "//Hilltop/Measurement/Data/E/T"), xmlValue)
+    Value <- sapply(getNodeSet(getData, "//Hilltop/Measurement/Data/E/I1"), xmlValue)
     
-    MeasurementName <- paste(dm$MeasurementName," [",dm$DataSourceName,"]",sep="")
+    df <- data.frame(DateTime,Value,stringsAsFactors = FALSE)
+    #df$chart <- chartType
+    
+    DT::datatable(df, options = list(pageLength = 15))
   })
   
   ## Outputting reactive function values to ui controls
@@ -255,7 +250,7 @@ server <- function(input, output, session) {
   
   #Drop-down selection box to contain Measurement List at a Site
   output$data_choose_measurement <- renderUI({
-    selectInput("data_measurementList", "Measurements", as.list(SiteMeasurementList()))
+    selectInput("data_measurement", "Measurements", as.list(SiteMeasurementList()))
   })
   
   # Store last zoom button value so we can detect when it's clicked
