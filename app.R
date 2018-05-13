@@ -126,9 +126,10 @@ ui <- dashboardPage(skin="black",
                 mainPanel(
                 tabsetPanel(
                   id="mySiteData",
-                  tabPanel("Table"),
+                  tabPanel("Info"),
                   tabPanel("Chart"),
-                  tabPanel("Download")
+                  tabPanel("Data"),
+                  tabPanel("Statistics")
                 ))
               )
       ),
