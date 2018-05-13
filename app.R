@@ -121,8 +121,14 @@ ui <- dashboardPage(skin="black",
                 uiOutput("data_choose_measurement"),
                 selectInput("interval",label = "Interval",choices = list("Daily" = 1,"Weekly"=2, "Monthly"=3,"Yearly"=4),selected=2),
                 flex = 1, height = "40px"
-              )
-
+              ),
+              fillRow(
+navlistPanel(
+  title = 'Data',
+  tabPanel('table'),
+  tabPanel('chart'),
+  tabPanel('download')
+)
       ),
 
       # -------------------------
