@@ -167,12 +167,35 @@ server <- function(input, output, session) {
   # Reactive functions defined
   # 1. Ability to dynamically get list of sites for a single collection
   CollectionList <- reactive({
-    getSites <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteList&location=LatLong&collection=",input$collection,sep=""))
+    
+    var1 <- input$collection
+    getSites <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteList&location=LatLong&collection=",var1,sep=""))
     site<-getNodeSet(getSites,"//Latitude/../@Name")
     site<-sapply(site, as.character)
     lat <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Latitude"), xmlValue))
     lon <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Longitude"), xmlValue))
     df <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
+    
+    if(var1=="Rainfall"){
+    getData <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Collection=",var1,"&method=Total&interval=1%20day/timeInterval=P1D/now",sep=""))
+    } else {
+    getData <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Collection=",var1,sep=""))
+    }
+    site<-getNodeSet(getData,"//Measurement/@SiteName")
+    site<-sapply(site, as.character)
+    sensor<-getNodeSet(getData,"//Measurement/DataSource/@Name")
+    sensor<-sapply(sensor, as.character)
+    LastValue<-sapply(getNodeSet(getData,"//Measurement/Data/E[1]/I1[1]"),xmlValue)
+    if(var1=="River Level"|var1=="Flow"){
+      LastValue<-as.character(as.numeric(LastValue)/1000)
+    } else {
+      LastValue<-as.character(LastValue)
+    }
+    df1 <-data.frame(site,sensor,LastValue, stringsAsFactors=FALSE)
+    
+    df <- merge(x=df,y=df1,by="site",all.x=TRUE)
+    
+    
   })
   
   
@@ -210,7 +233,7 @@ server <- function(input, output, session) {
   
   # Reactive functions defined
   # 3. Ability to dynamically get time series data from site/meausurement combo
-  output$SiteMeasurementData <- DT::renderDataTable({
+  GetData <- reactive({
     #Get name of datasource in order to pull measurements correctly
     #Need to use regex to extract text between [ and ]
     str  <- input$data_measurement
@@ -232,6 +255,12 @@ server <- function(input, output, session) {
     df <- data.frame(DateTime,Value,stringsAsFactors = FALSE)
     #df$chart <- chartType
     
+    
+  })
+  
+  
+  output$SiteMeasurementData <- DT::renderDataTable({
+    df<-GetData()
     DT::datatable(df, options = list(pageLength = 15))
   })
   
@@ -261,15 +290,28 @@ server <- function(input, output, session) {
   
   output$map <- renderLeaflet({
     map <- leaflet(CollectionList()) %>%  
-      setView(lng = 175, lat = -39.6, zoom = 7) %>%
+      setView(lng = 175, lat = -39.6, zoom = 8) %>%
       addTiles() %>%
       addCircleMarkers(
         ~lon,
         ~lat,
-        color = "green",
-        opacity = 0.8,
-        radius = 5
-      )  
+        color = "white",
+        opacity = 1,
+        radius = 12
+      ) %>%
+      addLabelOnlyMarkers(
+        ~lon,
+        ~lat,
+        label = ~LastValue,
+        group = "brew",
+        labelOptions = leaflet::labelOptions(
+          noHide = TRUE,
+          textOnly = TRUE,
+          opacity = 1
+        )
+        
+        
+      )
     #addMarkers(~lon, ~lat, popup = ~as.character(site), label = ~as.character(site))
     #addTiles(options = tileOptions(maxZoom = 28, maxNativeZoom = 19), group = 'OSM')
 
