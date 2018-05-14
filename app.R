@@ -16,10 +16,11 @@
 library(shiny)
 library(shinydashboard)
 library(leaflet)
+library(tidyr)
 library(dplyr)
 library(curl) # make the jsonlite suggested dependency explicit
 library(XML)
-
+library(highcharter)
 
 ## Code supporting interface and reactive functions --------
 
@@ -127,8 +128,10 @@ ui <- dashboardPage(skin="black",
                 tabsetPanel(
                   id="mySiteData",
                   tabPanel("Info"),
-                  tabPanel("Chart"),
-                  tabPanel("Data", DT::dataTableOutput('SiteMeasurementData')),
+                  tabPanel("Chart",
+                           highchartOutput("tsChart")),
+                  tabPanel("Data", 
+                           DT::dataTableOutput('SiteMeasurementData')),
                   tabPanel("Statistics")
                 ))
               )
@@ -216,7 +219,7 @@ server <- function(input, output, session) {
     
     if(ds=="SCADA Rainfall"|ds=="Rainfall"){
       chartType <- "Bar"
-      url <- paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Site=",input$data_siteName,"&Measurement=",input$data_measurement,"&TimeInterval=P7D/now&method=Total&interval=1 hour",sep="")
+      url <- paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Site=",input$data_siteName,"&Measurement=",input$data_measurement,"&TimeInterval=P7D/now&method=Total&interval=1 hour&alignment=00:00:00",sep="")
     } else {
       chartType <- "Continuous"
       url <- paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Site=",input$data_siteName,"&Measurement=",input$data_measurement,"&TimeInterval=P7D/now",sep="")
@@ -254,7 +257,7 @@ server <- function(input, output, session) {
   })
   
   # Store last zoom button value so we can detect when it's clicked
-  lastZoomButtonValue <- NULL
+  #lastZoomButtonValue <- NULL
   
   output$map <- renderLeaflet({
     map <- leaflet(CollectionList()) %>%  
@@ -270,16 +273,67 @@ server <- function(input, output, session) {
     #addMarkers(~lon, ~lat, popup = ~as.character(site), label = ~as.character(site))
     #addTiles(options = tileOptions(maxZoom = 28, maxNativeZoom = 19), group = 'OSM')
 
-    rezoom <- "first"
-    # If zoom button was clicked this time, and store the value, and rezoom
-    if (!identical(lastZoomButtonValue, input$zoomButton)) {
-      lastZoomButtonValue <<- input$zoomButton
-      rezoom <- "always"
-    }
-    map <- map %>% mapOptions(zoomToLimits = rezoom)
     map
     
- })
+  })
+  
+  # getID <- reactive({
+  #   #invalidateLater(60000)
+  #   y <- getDataIntraDay(input$text, input$radio)
+  #   return(y)
+  # })
+  
+  output$tsChart <- renderHighchart({
+    #Get name of datasource in order to pull measurements correctly
+    #Need to use regex to extract text between [ and ]
+    str  <- input$data_measurement
+    expr <- "(?<=\\[)(.*)(?=\\])"
+    ds   <- regmatches(x=str,regexpr(expr,str,perl=TRUE))
+    
+    if(ds=="SCADA Rainfall"|ds=="Rainfall"){
+      chartType <- "Bar"
+      url <- paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Site=",input$data_siteName,"&Measurement=",input$data_measurement,"&TimeInterval=P7D/now&method=Total&interval=1 hour&alignment=00:00:00",sep="")
+    } else {
+      chartType <- "Continuous"
+      url <- paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Site=",input$data_siteName,"&Measurement=",input$data_measurement,"&TimeInterval=P7D/now",sep="")
+    }
+    
+    getData <- xmlInternalTreeParse(url)
+    DateTime <- sapply(getNodeSet(getData, "//Hilltop/Measurement/Data/E/T"), xmlValue)
+    DateTime <- strptime(DateTime,format = "%Y-%m-%dT%H:%M:%S",tz="NZ")
+    
+    Value <- as.numeric(sapply(getNodeSet(getData, "//Hilltop/Measurement/Data/E/I1"), xmlValue))
+    
+    df <- data_frame(as.POSIXct(DateTime),Value)
+    names(df) <- c("x","y")
+    
+    # converting datetime to a timestamp - needed by highcharter library
+    df$x <- datetime_to_timestamp(df$x)
+    
+    if(chartType=="Continuous"){
+      
+      # Creating a simple timeseries chart for continuous data
+      hchart(df, type = "line",
+             hcaes(x = x, y=y)) %>% 
+        hc_title(text = input$data_siteName) %>% 
+        hc_subtitle(text = input$data_measurement) %>% 
+        hc_xAxis(type="datetime",
+                 title = list(text="Date")) %>%
+        hc_yAxis(title = list(text=input$data_measurement))
+
+    } else if(chartType=="Bar"){
+
+      hchart(df, type = "column",
+             hcaes(x = x, y=y)) %>% 
+        hc_title(text = input$data_siteName) %>% 
+        hc_subtitle(text = input$data_measurement) %>% 
+        hc_xAxis(type="datetime",
+                 title = list(text="Date")) %>%
+        hc_yAxis(title = list(text=input$data_measurement))
+      
+            
+    } 
+  })
 
 }
 
