@@ -291,10 +291,10 @@ server <- function(input, output, session) {
     ds   <- regmatches(x=str,regexpr(expr,str,perl=TRUE))
     
     if(ds=="SCADA Rainfall"|ds=="Rainfall"){
-      chartType <- "Bar"
+      chartType <- "column"
       url <- paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Site=",input$data_siteName,"&Measurement=",input$data_measurement,"&TimeInterval=P7D/now&method=Total&interval=1 hour&alignment=00:00:00",sep="")
     } else {
-      chartType <- "Continuous"
+      chartType <- "line"
       url <- paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Site=",input$data_siteName,"&Measurement=",input$data_measurement,"&TimeInterval=P7D/now",sep="")
     }
     
@@ -310,29 +310,15 @@ server <- function(input, output, session) {
     # converting datetime to a timestamp - needed by highcharter library
     df$x <- datetime_to_timestamp(df$x)
     
-    if(chartType=="Continuous"){
-      
-      # Creating a simple timeseries chart for continuous data
-      hchart(df, type = "line",
-             hcaes(x = x, y=y)) %>% 
-        hc_title(text = input$data_siteName) %>% 
-        hc_subtitle(text = input$data_measurement) %>% 
-        hc_xAxis(type="datetime",
-                 title = list(text="Date")) %>%
-        hc_yAxis(title = list(text=input$data_measurement))
+    # Creating a simple timeseries chart for continuous data
+    hchart(df, type = chartType,
+           hcaes(x = x, y=y)) %>% 
+      hc_title(text = input$data_siteName) %>% 
+      hc_subtitle(text = input$data_measurement) %>% 
+      hc_xAxis(type="datetime",
+               title = list(text="Date")) %>%
+      hc_yAxis(title = list(text=input$data_measurement))
 
-    } else if(chartType=="Bar"){
-
-      hchart(df, type = "column",
-             hcaes(x = x, y=y)) %>% 
-        hc_title(text = input$data_siteName) %>% 
-        hc_subtitle(text = input$data_measurement) %>% 
-        hc_xAxis(type="datetime",
-                 title = list(text="Date")) %>%
-        hc_yAxis(title = list(text=input$data_measurement))
-      
-            
-    } 
   })
 
 }
