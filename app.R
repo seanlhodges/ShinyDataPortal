@@ -185,7 +185,7 @@ server <- function(input, output, session) {
     site<-sapply(site, as.character)
     sensor<-getNodeSet(getData,"//Measurement/DataSource/@Name")
     sensor<-sapply(sensor, as.character)
-    LastValue<-sapply(getNodeSet(getData,"//Measurement/Data/E[1]/I1[1]"),xmlValue)
+    LastValue<-sapply(getNodeSet(getData,"//Measurement/Data/E[last()]/I1"),xmlValue)
     if(var1=="River Level"|var1=="Flow"){
       LastValue<-as.character(round(as.numeric(LastValue)/1000,1))
     } else if (var1=="Rainfall"){
