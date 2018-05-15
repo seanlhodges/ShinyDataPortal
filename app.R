@@ -316,7 +316,7 @@ server <- function(input, output, session) {
             'color'='white',
             'font-size' = '10px',
             'position' = 'absolute',
-            'top' = '4px'
+            'top' = '20px'
             
           )
         )
