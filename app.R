@@ -187,9 +187,11 @@ server <- function(input, output, session) {
     sensor<-sapply(sensor, as.character)
     LastValue<-sapply(getNodeSet(getData,"//Measurement/Data/E[1]/I1[1]"),xmlValue)
     if(var1=="River Level"|var1=="Flow"){
-      LastValue<-as.character(as.numeric(LastValue)/1000)
+      LastValue<-as.character(round(as.numeric(LastValue)/1000,1))
+    } else if (var1=="Rainfall"){
+      LastValue<-as.character(round(as.numeric(LastValue),0))
     } else {
-      LastValue<-as.character(LastValue)
+      LastValue<-as.character(round(as.numeric(LastValue),1))
     }
     df1 <-data.frame(site,sensor,LastValue, stringsAsFactors=FALSE)
     
@@ -290,24 +292,33 @@ server <- function(input, output, session) {
   
   output$map <- renderLeaflet({
     map <- leaflet(CollectionList()) %>%  
-      setView(lng = 175, lat = -39.6, zoom = 8) %>%
+      setView(lng = 175.1, lat = -39.8, zoom = 8) %>%
       addTiles() %>%
       addCircleMarkers(
         ~lon,
         ~lat,
-        color = "white",
+        color = rgb(0.4, 0.4, 0.6),
+        fillOpacity = 0.8,
         opacity = 1,
-        radius = 12
+        radius = 12,
+        stroke = 0
       ) %>%
       addLabelOnlyMarkers(
         ~lon,
         ~lat,
         label = ~LastValue,
-        group = "brew",
         labelOptions = leaflet::labelOptions(
           noHide = TRUE,
           textOnly = TRUE,
-          opacity = 1
+          opacity = 1,
+          direction = "top",
+          style=list(
+            'color'='white',
+            'font-size' = '10px',
+            'position' = 'absolute',
+            'top' = '4px'
+            
+          )
         )
         
         
