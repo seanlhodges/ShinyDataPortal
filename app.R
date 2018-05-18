@@ -22,6 +22,7 @@ library(dplyr)
 library(curl) # make the jsonlite suggested dependency explicit
 library(XML)
 library(highcharter)
+library(RColorBrewer)
 
 ## Code supporting interface and reactive functions --------
 
@@ -379,23 +380,31 @@ server <- function(input, output, session) {
     } else {
     map <- leaflet(obj) %>%  
       setView(lng = 175.1, lat = -39.8, zoom = 8) %>%
-      #addTiles(group="Default") %>%
+      addTiles(group="Topo") %>%
       #Add two tile sources
-      addProviderTiles("Esri.WorldImagery", group="ESRI") %>%
-      #addTiles(options = providerTileOptions(noWrap = TRUE), group="Default") %>%
+      addProviderTiles("Esri.WorldImagery", group="Imagery") %>%
+      addTiles(options = providerTileOptions(noWrap = TRUE), group="Default") %>%
+      addEasyButton(easyButton(
+        icon="fa-globe", title="Zoom to Level 1",
+        onClick=JS("function(btn, map){ map.setZoom(8); }"))) %>%
+      addEasyButton(easyButton(
+        icon="fa-crosshairs", title="Locate Me",
+        onClick=JS("function(btn, map){ map.locate({setView: true}); }"))) %>%
       addCircleMarkers(
         ~lon,
         ~lat,
+        group = "Stations",
         color = rgb(0.4, 0.4, 0.6),
         fillOpacity = 0.8,
         opacity = 1,
-        radius = 12,
+        radius = 11,
         stroke = 0,layerId=~site
       ) %>%
       addLabelOnlyMarkers(
         ~lon,
         ~lat,
         label = ~LastValue,
+        group = "Stations",
         labelOptions = leaflet::labelOptions(
           noHide = TRUE,
           textOnly = TRUE,
@@ -405,17 +414,27 @@ server <- function(input, output, session) {
             'color'='white',
             'font-size' = '10px',
             'position' = 'absolute',
-            'top' = '20px'
-            
-          )
+            'top' = '20px')
         ) #%>%
-        #addHeatmap(
-        #  lng = ~lon,
-        #  lat = ~lat,
-        #  intensity = numValue
-        #) #%>%
         # Add  the control widget
         #addLayersControl(baseGroups = c("ESRI","Default"))
+      ) %>%
+      addHeatmap(
+        lng = ~lon,
+        lat = ~lat,
+        intensity = ~numValue,
+        radius = 20,
+        blur=15,
+        max=30,
+        minOpacity = 0,
+        gradient = "BuPu",
+        group = "Heatmap"
+      ) %>%
+      # Layers control
+      addLayersControl(
+        baseGroups = c("Topo", "Imagery"),
+        overlayGroups = c("Stations", "Heatmap"),
+        options = layersControlOptions(collapsed = FALSE)
       )
     
     #addMarkers(~lon, ~lat, popup = ~as.character(site), label = ~as.character(site))
