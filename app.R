@@ -16,6 +16,7 @@
 library(shiny)
 library(shinydashboard)
 library(leaflet)
+library(leaflet.extras)
 library(tidyr)
 library(dplyr)
 library(curl) # make the jsonlite suggested dependency explicit
@@ -26,7 +27,15 @@ library(highcharter)
 
 # * Deliver list of collections *
 getCollection <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/boo.hts?service=Hilltop&request=CollectionList",sep=""))
-collections<-sapply(getNodeSet(getCollection,"//Collection/@Name"),as.character)
+collections<-sapply(getNodeSet(getCollection,"//Item/../../Collection/@Name"),as.character)
+
+# * Build dataframe to hold collection, sitename and measurement rows
+s <- sapply(getNodeSet(getCollection,"//Item/SiteName"),xmlValue)
+m <- sapply(getNodeSet(getCollection,"//Item/Measurement"),xmlValue)
+
+for(i in 1:length(s)){
+  cn <- sapply(getNodeSet(getCollection,paste("//Collection[Item/SiteName='",s[i],"' and Item/Measurement='",m[1],"']/@Name",sep="")),as.character)
+}
 
 # * Deliver list of all sites   *
 getSites <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteList&location=LatLong",sep=""))
@@ -53,7 +62,12 @@ ui <- dashboardPage(skin="black",
   dashboardHeader(title = "Natural Resource Data Portal"),
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Dashboards", tabName = "dashboard", icon = icon("dashboard")),
+      menuItem("Dashboards", tabName = "dashboard", icon = icon("dashboard"),
+               menuSubItem("Welcome", tabName = "dashWelcome"),
+               menuSubItem("Climate Summary", tabName = "dashClimate"),
+               menuSubItem("Flow (%)", tabName = "dashFlow"),
+               menuSubItem("Overall data", tabName = "dashOverall")
+      ),
       menuItem("Maps", tabName = "maps", icon = icon("globe")),
       menuItem("Data", tabName = "data", icon = icon("th")),
       menuItem("Location", tabName = "location", icon = icon("map-marker")),
@@ -66,9 +80,10 @@ ui <- dashboardPage(skin="black",
     tabItems(
       # -------------------------
       #     First tab content
+      #      First sub menu
       # * Description of portal *
       # -------------------------
-      tabItem(tabName = "dashboard",
+      tabItem(tabName = "dashWelcome",
               tags$style(".highlight {color:#E87722;font-size:1.5em}"),
               
               h3("Welcome to the Environmental data portal"),
@@ -85,6 +100,43 @@ ui <- dashboardPage(skin="black",
               h3("Quality Coding"),
               p("Horizons Regional Council undertakes a quality assurance process on all data that adheres to the National Environmental Monitoring Standards (NEMS) including the application of quality codes to data. For information on our quality assurance and grading process refer to  in the top right corner of the website.")
               
+      ),
+      # -------------------------
+      #     First tab content
+      #      Second sub menu
+      # * Description of portal *
+      # -------------------------
+      tabItem(tabName = "dashClimate",
+              tags$style(".highlight {color:#E87722;font-size:1.5em}"),
+              
+              h3("Climate Summary"),
+              p("Real time data for such measurements as rainfall, soil moisture and wind speed and direction, can be aggregated over time (on a daily, weekly, monthly or annual basis) in order to present and compare conditions during the year, or from year to year."),
+              p("Long term signals in the data around climate change ...")
+      ),
+      
+      # -------------------------
+      #     First tab content
+      #      Third sub menu
+      # * Description of portal *
+      # -------------------------
+      tabItem(tabName = "dashFlow",
+              tags$style(".highlight {color:#E87722;font-size:1.5em}"),
+              
+              h3("Nothing to see here"),
+              p("Essentially a place holder for a WaterWatch type presentation")
+      ),
+      
+      # -------------------------
+      #     First tab content
+      #      Fourth sub menu
+      # * Description of portal *
+      # -------------------------
+      tabItem(tabName = "dashOverall",
+              tags$style(".highlight {color:#E87722;font-size:1.5em}"),
+              
+              h3("Data delivery statistics"),
+              p("How much data has been delivered today, last week, last month, this year, compared to last year"),
+              p("Opportunity for a simple dashboard for statistics on data acquisition.")
       ),
       
       # -------------------------
@@ -127,7 +179,11 @@ ui <- dashboardPage(skin="black",
                 mainPanel(
                 tabsetPanel(
                   id="mySiteData",
-                  tabPanel("Info"),
+                  tabPanel("Info",
+                           h3("Site information"),
+                           p("Place holder for site metadata. This can be populated by the hilltop call to 'SiteInfo'")
+
+                           ),
                   tabPanel("Chart",
                            highchartOutput("tsChart")),
                   tabPanel("Data", 
@@ -163,12 +219,31 @@ ui <- dashboardPage(skin="black",
 ## server -----------
 
 server <- function(input, output, session) {
+  # create a reactive value that will store the click position
+  # data_of_click <- reactiveValues(clickedMarker=NULL)
+  
+  # store the click
+  # observeEvent(input$map_marker_click,{
+  #  data_of_click$clickedMarker <- input$map_marker_click
+  #  print(data_of_click$clickedMarker)
+  # })
+  
+  observe({
+    click <-input$map_marker_click
+    
+  })
+  
   
   # Reactive functions defined
   # 1. Ability to dynamically get list of sites for a single collection
   CollectionList <- reactive({
+    #cat("input$collection",input$collection,"\n")
     
     var1 <- input$collection
+    cat("var1",var1,"\n")
+    if(is.null(var1)){
+      return(NULL)
+    } else {
     getSites <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteList&location=LatLong&collection=",var1,sep=""))
     site<-getNodeSet(getSites,"//Latitude/../@Name")
     site<-sapply(site, as.character)
@@ -176,34 +251,42 @@ server <- function(input, output, session) {
     lon <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Longitude"), xmlValue))
     df <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
     
+    ## BUG: this "if" statement appears to generate the initial error
+    ## seen on the map screen
     if(var1=="Rainfall"){
-    getData <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Collection=",var1,"&method=Total&interval=1%20day/timeInterval=P1D/now",sep=""))
+      getData <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Collection=",var1,"&method=Total&interval=1%20day/timeInterval=P1D/now",sep=""))
     } else {
-    getData <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Collection=",var1,sep=""))
+      getData <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Collection=",var1,sep=""))
     }
     site<-getNodeSet(getData,"//Measurement/@SiteName")
     site<-sapply(site, as.character)
     sensor<-getNodeSet(getData,"//Measurement/DataSource/@Name")
     sensor<-sapply(sensor, as.character)
+    observedProperty<-sapply(getNodeSet(getData,"//Measurement/DataSource/ItemInfo/ItemName"),xmlValue)
     LastValue<-sapply(getNodeSet(getData,"//Measurement/Data/E[last()]/I1"),xmlValue)
-    if(var1=="River Level"|var1=="Flow"){
+    numValue <- as.numeric(LastValue)
+    if(var1=="River Level"|var1=="Flow"|var1=="Groundwater"){
       LastValue<-as.character(round(as.numeric(LastValue)/1000,1))
     } else if (var1=="Rainfall"){
       LastValue<-as.character(round(as.numeric(LastValue),0))
     } else {
       LastValue<-as.character(round(as.numeric(LastValue),1))
     }
-    df1 <-data.frame(site,sensor,LastValue, stringsAsFactors=FALSE)
+    #cat("length(df1)",length(df),"\n")
+    df1 <-data.frame(site,sensor,observedProperty,LastValue,numValue, stringsAsFactors=FALSE)
     
     df <- merge(x=df,y=df1,by="site",all.x=TRUE)
-    
-    
+    #cat("length(df)",length(df),"\n")
+    }
   })
   
   
   # Reactive functions defined
   # 2. Ability to dynamically get list of available measurements for a single site
   SiteMeasurementList <- reactive({
+    if(is.null(input$data_siteName)){
+      return()
+    } else {
     getMeas <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=MeasurementList&Site=",input$data_siteName,sep=""))
     # Need to construct a flat table of:
     #  DataSourceName, MeasurmentName, DataType, Interpolation, Format, Units, Available Start Date, Available End Date
@@ -231,6 +314,7 @@ server <- function(input, output, session) {
     # element and attribute values through one further for-loop
     
     MeasurementName <- paste(dm$MeasurementName," [",dm$DataSourceName,"]",sep="")
+    }
   })
   
   # Reactive functions defined
@@ -287,13 +371,18 @@ server <- function(input, output, session) {
     selectInput("data_measurement", "Measurements", as.list(SiteMeasurementList()))
   })
   
-  # Store last zoom button value so we can detect when it's clicked
-  #lastZoomButtonValue <- NULL
-  
+  ## Make the map
   output$map <- renderLeaflet({
-    map <- leaflet(CollectionList()) %>%  
+    obj<-CollectionList()
+    if(is.null(obj)){
+      return()
+    } else {
+    map <- leaflet(obj) %>%  
       setView(lng = 175.1, lat = -39.8, zoom = 8) %>%
-      addTiles() %>%
+      #addTiles(group="Default") %>%
+      #Add two tile sources
+      addProviderTiles("Esri.WorldImagery", group="ESRI") %>%
+      #addTiles(options = providerTileOptions(noWrap = TRUE), group="Default") %>%
       addCircleMarkers(
         ~lon,
         ~lat,
@@ -301,7 +390,7 @@ server <- function(input, output, session) {
         fillOpacity = 0.8,
         opacity = 1,
         radius = 12,
-        stroke = 0
+        stroke = 0,layerId=~site
       ) %>%
       addLabelOnlyMarkers(
         ~lon,
@@ -319,15 +408,21 @@ server <- function(input, output, session) {
             'top' = '20px'
             
           )
-        )
-        
-        
+        ) #%>%
+        #addHeatmap(
+        #  lng = ~lon,
+        #  lat = ~lat,
+        #  intensity = numValue
+        #) #%>%
+        # Add  the control widget
+        #addLayersControl(baseGroups = c("ESRI","Default"))
       )
+    
     #addMarkers(~lon, ~lat, popup = ~as.character(site), label = ~as.character(site))
     #addTiles(options = tileOptions(maxZoom = 28, maxNativeZoom = 19), group = 'OSM')
 
     map
-    
+    }
   })
   
   # getID <- reactive({
