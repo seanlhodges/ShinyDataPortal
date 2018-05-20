@@ -170,14 +170,14 @@ ui <- dashboardPage(skin="black",
 
       tabItem(tabName = "data",
               h2("Data lists and summaries"),
-              fillRow(
+              fillRow(width="100%",
                 uiOutput("data_choose_site"),
                 uiOutput("data_choose_measurement"),
                 selectInput("interval",label = "Interval",choices = list("Daily" = 1,"Weekly"=2, "Monthly"=3,"Yearly"=4),selected=2),
-                flex = 1, height = "70px"
+                flex = 1, height = "100px"
               ),
-              fillRow(
-                mainPanel(
+              fillRow(width="100%",
+                mainPanel(width=12,   # makes the mainPanel fill the entire width of the screen, otherwise defaults to 8
                 tabsetPanel(
                   id="mySiteData",
                   tabPanel("Info",
@@ -499,13 +499,19 @@ server <- function(input, output, session) {
     df$x <- datetime_to_timestamp(df$x)
     
     # Creating a simple timeseries chart for continuous data
+    # - Turn off UTC time
+    hcGopts <- getOption("highcharter.global")
+    hcGopts$useUTC <- FALSE
+    options(highcharter.global = hcGopts)
+    
     hchart(df, type = chartType,
-           hcaes(x = x, y=y)) %>% 
+           hcaes(x = x, y=y)) %>%
       hc_title(text = input$data_siteName) %>% 
       hc_subtitle(text = input$data_measurement) %>% 
       hc_xAxis(type="datetime",
                title = list(text="Date")) %>%
-      hc_yAxis(title = list(text=input$data_measurement))
+      hc_yAxis(title = list(text=input$data_measurement))%>% 
+      hc_exporting(enabled = TRUE)
 
   })
 
