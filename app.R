@@ -66,7 +66,7 @@ ui <- dashboardPage(skin="black",
       menuItem("Dashboards", tabName = "dashboard", icon = icon("dashboard"),
                menuSubItem("Welcome", tabName = "dashWelcome"),
                menuSubItem("Climate Summary", tabName = "dashClimate"),
-               menuSubItem("Flow (%)", tabName = "dashFlow"),
+               menuSubItem("River height warnings", tabName = "dashRiverHeights"),
                menuSubItem("Overall data", tabName = "dashOverall")
       ),
       menuItem("Maps", tabName = "maps", icon = icon("globe")),
@@ -76,7 +76,7 @@ ui <- dashboardPage(skin="black",
     )
   ),
 
-
+  
   dashboardBody(
     tabItems(
       # -------------------------
@@ -92,7 +92,7 @@ ui <- dashboardPage(skin="black",
               
               tags$b("Start your search in the  Map section by first selecting the parameter of choice, and then select the appropriate Interval and Statistic"),
               br(),
-              p(),icon("dashboard",class="highlight"),span("Dashboards access informative dashboards including this homepage and rainfall maps."),br(),
+              p(),icon("dashboard",class="highlight"),span("Dashboards access informative screens including this homepage and rainfall maps."),br(),
               p(),icon("globe",class="highlight"),span("Map shows locations and their values overlaid on a map of the Horizons region. A choice of the latest value or a selection of basic statistics at different intervals are available."),br(),
               p(),icon("th",class="highlight"),span("Data Set provides a summary of each dataset available and is further broken up into sub-tabs of Summary, Chart, Grid and Statistics."),br(),
               p(),icon("map-marker",class="highlight"),span("Location enables you to search for a particular location. Once a location is selected it will display a list of data sets available."),br(),
@@ -120,11 +120,11 @@ ui <- dashboardPage(skin="black",
       #      Third sub menu
       # * Description of portal *
       # -------------------------
-      tabItem(tabName = "dashFlow",
+      tabItem(tabName = "dashRiverHeights",
               tags$style(".highlight {color:#E87722;font-size:1.5em}"),
               
-              h3("Nothing to see here"),
-              p("Essentially a place holder for a WaterWatch type presentation")
+              h3("Rising River Levels"),
+              p("Essentially a place holder for active river height warnings")
       ),
       
       # -------------------------
@@ -252,10 +252,8 @@ server <- function(input, output, session) {
     lon <- as.numeric(sapply(getNodeSet(getSites, "//HilltopServer/Site/Longitude"), xmlValue))
     df <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
     
-    ## BUG: this "if" statement appears to generate the initial error
-    ## seen on the map screen
     if(var1=="Rainfall"){
-      getData <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Collection=",var1,"&method=Total&interval=1%20day/timeInterval=P1D/now",sep=""))
+      getData <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Collection=",var1,"&method=Total&interval=1%20day",sep=""))
     } else {
       getData <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=GetData&Collection=",var1,sep=""))
     }
@@ -266,15 +264,18 @@ server <- function(input, output, session) {
     observedProperty<-sapply(getNodeSet(getData,"//Measurement/DataSource/ItemInfo/ItemName"),xmlValue)
     LastValue<-sapply(getNodeSet(getData,"//Measurement/Data/E[last()]/I1"),xmlValue)
     numValue <- as.numeric(LastValue)
+    descValue <- "Last recorded value"
+    dateValue <- sapply(getNodeSet(getData,"//Measurement/Data/E[last()]/T"),xmlValue)
     if(var1=="River Level"|var1=="Flow"|var1=="Groundwater"){
       LastValue<-as.character(round(as.numeric(LastValue)/1000,1))
     } else if (var1=="Rainfall"){
       LastValue<-as.character(round(as.numeric(LastValue),0))
+      descValue<-"Last 24 hours"
     } else {
       LastValue<-as.character(round(as.numeric(LastValue),1))
     }
     #cat("length(df1)",length(df),"\n")
-    df1 <-data.frame(site,sensor,observedProperty,LastValue,numValue, stringsAsFactors=FALSE)
+    df1 <-data.frame(site,sensor,observedProperty,dateValue,LastValue,numValue,descValue, stringsAsFactors=FALSE)
     
     df <- merge(x=df,y=df1,by="site",all.x=TRUE)
     #cat("length(df)",length(df),"\n")
@@ -378,6 +379,7 @@ server <- function(input, output, session) {
     if(is.null(obj)){
       return()
     } else {
+    # Configuring map
     map <- leaflet(obj) %>%  
       setView(lng = 175.1, lat = -39.8, zoom = 8) %>%
       addTiles(group="Topo") %>%
@@ -444,6 +446,25 @@ server <- function(input, output, session) {
     }
   })
   
+  # When circle is hovered over...show a popup
+  observeEvent(input$map_shape_mouseover$id, {
+    leafletProxy("map") %>% clearPopoups
+    pointId <- input$map_shape_mouseover$id
+    cat(pointId,"\n")
+    lat = sites[sites$site == pointId, lat]
+    lng = sites[sites$site == pointId, lon]
+    leafletProxy("map") %>% addPopups(lat = lat, lng = lon, as.character(pointId), layerId = "hoverPopup")
+  })
+  
+  observeEvent(input$map_shape_onClick$id, {
+    leafletProxy("map") %>% clearPopoups
+    pointId <- input$map_shape_onClick$id
+    cat(pointId,"\n")
+    lat = sites[sites$site == pointId, lat]
+    lng = sites[sites$site == pointId, lon]
+    leafletProxy("map") %>% addPopups(lat = lat, lng = lon, as.character(pointId), layerId = "clickPopup")
+  })
+
   # getID <- reactive({
   #   #invalidateLater(60000)
   #   y <- getDataIntraDay(input$text, input$radio)
