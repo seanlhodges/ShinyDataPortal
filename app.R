@@ -480,17 +480,19 @@ server <- function(input, output, session) {
                                       layerId = "hoverPopup")
   })
   
-  # observeEvent(input$map_marker_onClick$id, {
-  #   leafletProxy("map") %>% clearPopups()
-  #   pointId <- input$map_marker_onClick$id
-  #   cat(pointId,"\n")
-  #   lat = sites[sites$site == pointId, 2]
-  #   lng = sites[sites$site == pointId, 3]
-  #   lealeafletProxy("map") %>% addPopups(lat = lat, lng = lng, 
-  #                                        paste("<b>",as.character(pointId),"</b><br />",
-  #                                              "Some random text"), 
-  #                                        layerId = "hoverPopup")
-  #   })
+  observeEvent(input$map_marker_click$id, {
+    leafletProxy("map") %>% clearPopups()
+    pointId <- input$map_marker_click$id
+    df <- GetSiteInfo()
+    popupText <- paste("<b>",as.character(pointId),"</b><br />",
+                       df$Comment[2],
+                       "<p style='text-align:center'>[ Chart ]   [ Data ]")
+    cat(pointId,"\n")
+    lat = sites[sites$site == pointId, 2]
+    lng = sites[sites$site == pointId, 3]
+    leafletProxy("map") %>% addPopups(lat = lat, lng = lng, popupText,
+                                         layerId = "hoverPopup")
+    })
 
   # getID <- reactive({
   #   #invalidateLater(60000)
