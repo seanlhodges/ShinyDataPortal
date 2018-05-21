@@ -353,6 +353,7 @@ server <- function(input, output, session) {
     #Need to use regex to extract text between [ and ]
     str  <- "Manawatu at Teachers College"
     str <- input$map_marker_mouseover$id
+    str <- input$map_marker_click$id
     url <- paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteInfo&Site=",str,sep="")
 
     getSiteInfo <- xmlInternalTreeParse(url)
@@ -465,28 +466,46 @@ server <- function(input, output, session) {
   
 
   
-  # When circle is hovered over...show a popup
-  observeEvent(input$map_marker_mouseover$id, {
-    leafletProxy("map") %>% clearPopups()
-    pointId <- input$map_marker_mouseover$id
-    df <- GetSiteInfo()
-    popupText <- paste("<b>",as.character(pointId),"</b><br />",
-                       df$Comment[2],
-                       "<p style='text-align:center'>[ Chart ]   [ Data ]")
-    cat(pointId,"\n")
-    lat = sites[sites$site == pointId, 2]
-    lng = sites[sites$site == pointId, 3]
-    leafletProxy("map") %>% addPopups(lat = lat, lng = lng, popupText,
-                                      layerId = "hoverPopup")
-  })
-  
+  # # When circle is hovered over...show a popup
+  # observeEvent(input$map_marker_mouseover$id, {
+  #   leafletProxy("map") %>% clearPopups()
+  #   pointId <- input$map_marker_mouseover$id
+  #   df <- GetSiteInfo()
+  #   popupText <- paste("<b>",as.character(pointId),"</b><br />",
+  #                      df$Comment[2],
+  #                      "<p style='text-align:center'>[ <a onclick=openTab('shiny-tab-data')>Chart</a> ]   [ Data ]",
+  #                      tags$script(HTML("
+  #                            var openTab = function(tabName){
+  #                                       $('a', $('.sidebar')).each(function() {
+  #                                       if(this.getAttribute('data-value') == tabName) {
+  #                                       this.click()
+  #                                       };
+  #                                       });
+  #                                       }"))
+  #   )
+  #   cat(pointId,"\n")
+  #   lat = sites[sites$site == pointId, 2]
+  #   lng = sites[sites$site == pointId, 3]
+  #   leafletProxy("map") %>% addPopups(lat = lat, lng = lng, popupText,
+  #                                     layerId = "hoverPopup")
+  # })
+  # 
   observeEvent(input$map_marker_click$id, {
     leafletProxy("map") %>% clearPopups()
     pointId <- input$map_marker_click$id
     df <- GetSiteInfo()
     popupText <- paste("<b>",as.character(pointId),"</b><br />",
                        df$Comment[2],
-                       "<p style='text-align:center'>[ Chart ]   [ Data ]")
+                       "<p style='text-align:center'>[ <a onclick=openTab('shiny-tab-data')>Chart</a> ]   [ Data ]",
+                       tags$script(HTML("
+                             var openTab = function(tabName){
+                                        $('a', $('.sidebar')).each(function() {
+                                        if(this.getAttribute('data-value') == tabName) {
+                                        this.click()
+                                        };
+                                        });
+                                        }"))
+                       )
     cat(pointId,"\n")
     lat = sites[sites$site == pointId, 2]
     lng = sites[sites$site == pointId, 3]
@@ -494,11 +513,6 @@ server <- function(input, output, session) {
                                          layerId = "hoverPopup")
     })
 
-  # getID <- reactive({
-  #   #invalidateLater(60000)
-  #   y <- getDataIntraDay(input$text, input$radio)
-  #   return(y)
-  # })
   
   output$tsChart <- renderHighchart({
     #Get name of datasource in order to pull measurements correctly
