@@ -228,12 +228,12 @@ server <- function(input, output, session) {
   #  data_of_click$clickedMarker <- input$map_marker_click
   #  print(data_of_click$clickedMarker)
   # })
-  
-  observe({
-    click <-input$map_marker_click
-    
-  })
-  
+  # 
+  # observe({
+  #   click <-input$map_marker_click
+  #   
+  # })
+  # 
   
   # Reactive functions defined
   # 1. Ability to dynamically get list of sites for a single collection
@@ -346,10 +346,27 @@ server <- function(input, output, session) {
     
   })
   
+  # Reactive functions defined
+  # 4. Ability to dynamically get SiteInfo from Hilltop
+  GetSiteInfo <- reactive({
+    #Get name of datasource in order to pull measurements correctly
+    #Need to use regex to extract text between [ and ]
+    str  <- "Manawatu at Teachers College"
+    str <- input$map_marker_mouseover$id
+    url <- paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteInfo&Site=",str,sep="")
+
+    getSiteInfo <- xmlInternalTreeParse(url)
+    getSiteDF <- xmlToDataFrame(getSiteInfo)
+    df <- getSiteDF
+
+    
+  })
+  
+  
   
   output$SiteMeasurementData <- DT::renderDataTable({
     df<-GetData()
-    DT::datatable(df, options = list(pageLength = 15))
+    DT::datatable(df, options = list(pageLength = 10))
   })
   
   ## Outputting reactive function values to ui controls
@@ -446,24 +463,34 @@ server <- function(input, output, session) {
     }
   })
   
+
+  
   # When circle is hovered over...show a popup
-  observeEvent(input$map_shape_mouseover$id, {
-    leafletProxy("map") %>% clearPopoups
-    pointId <- input$map_shape_mouseover$id
+  observeEvent(input$map_marker_mouseover$id, {
+    leafletProxy("map") %>% clearPopups()
+    pointId <- input$map_marker_mouseover$id
+    df <- GetSiteInfo()
+    popupText <- paste("<b>",as.character(pointId),"</b><br />",
+                       df$Comment[2],
+                       "<p style='text-align:center'>[ Chart ]   [ Data ]")
     cat(pointId,"\n")
-    lat = sites[sites$site == pointId, lat]
-    lng = sites[sites$site == pointId, lon]
-    leafletProxy("map") %>% addPopups(lat = lat, lng = lon, as.character(pointId), layerId = "hoverPopup")
+    lat = sites[sites$site == pointId, 2]
+    lng = sites[sites$site == pointId, 3]
+    leafletProxy("map") %>% addPopups(lat = lat, lng = lng, popupText,
+                                      layerId = "hoverPopup")
   })
   
-  observeEvent(input$map_shape_onClick$id, {
-    leafletProxy("map") %>% clearPopoups
-    pointId <- input$map_shape_onClick$id
-    cat(pointId,"\n")
-    lat = sites[sites$site == pointId, lat]
-    lng = sites[sites$site == pointId, lon]
-    leafletProxy("map") %>% addPopups(lat = lat, lng = lon, as.character(pointId), layerId = "clickPopup")
-  })
+  # observeEvent(input$map_marker_onClick$id, {
+  #   leafletProxy("map") %>% clearPopups()
+  #   pointId <- input$map_marker_onClick$id
+  #   cat(pointId,"\n")
+  #   lat = sites[sites$site == pointId, 2]
+  #   lng = sites[sites$site == pointId, 3]
+  #   lealeafletProxy("map") %>% addPopups(lat = lat, lng = lng, 
+  #                                        paste("<b>",as.character(pointId),"</b><br />",
+  #                                              "Some random text"), 
+  #                                        layerId = "hoverPopup")
+  #   })
 
   # getID <- reactive({
   #   #invalidateLater(60000)
