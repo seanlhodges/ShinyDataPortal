@@ -220,20 +220,15 @@ ui <- dashboardPage(skin="black",
 ## server -----------
 
 server <- function(input, output, session) {
-  # create a reactive value that will store the click position
-  # data_of_click <- reactiveValues(clickedMarker=NULL)
+
+  ## modal intro dialog
+  showModal(modalDialog(
+    title = "Data Portal Disclaimer",
+    "Horizons Regional Council endeavours to provide useful and accurate information. Horizons Regional Council shall not, however, be liable whether in contract, tort, equity or otherwise, for any loss or damage of any type (including consequential losses) arising directly or indirectly from the inadequacy or any other deficiency in information supplied irrespective of the cause. Use of information supplied is entirely at the risk of the recipient and shall be deemed to be acceptance of this liability exclusion.",
+    easyClose = TRUE,
+    footer = modalButton("Accept")
+  ))
   
-  # store the click
-  # observeEvent(input$map_marker_click,{
-  #  data_of_click$clickedMarker <- input$map_marker_click
-  #  print(data_of_click$clickedMarker)
-  # })
-  # 
-  # observe({
-  #   click <-input$map_marker_click
-  #   
-  # })
-  # 
   
   # Reactive functions defined
   # 1. Ability to dynamically get list of sites for a single collection
@@ -496,15 +491,15 @@ server <- function(input, output, session) {
     df <- GetSiteInfo()
     popupText <- paste("<b>",as.character(pointId),"</b><br />",
                        df$Comment[2],
-                       "<p style='text-align:center'>[ <a onclick=openTab('shiny-tab-data')>Chart</a> ]   [ Data ]",
+                       "<p style='text-align:center'>[ <a onclick=openTab('Chart')>Chart</a> ]   [ Data ]",
                        tags$script(HTML("
                              var openTab = function(tabName){
                                         $('a', $('.sidebar')).each(function() {
-                                        if(this.getAttribute('data-value') == tabName) {
-                                        this.click()
-                                        };
+                                          if(this.getAttribute('data-value') == tabName) {
+                                            this.click()
+                                          };
                                         });
-                                        }"))
+                              }"))
                        )
     cat(pointId,"\n")
     lat = sites[sites$site == pointId, 2]
