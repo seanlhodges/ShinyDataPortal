@@ -128,7 +128,7 @@ ui <- dashboardPage(skin="black",
               tags$style(".highlight {color:#E87722;font-size:1.5em}"),
               
               h3("Rising River Levels"),
-              tags$iframe(src=ivrLink, height="100%",width="100%")
+              tags$iframe(src=ivrLink, height=800,width=800)
               #htmlOutput("IVR")
       ),
       
