@@ -24,16 +24,16 @@ library(XML)
 library(highcharter)
 library(RColorBrewer)
 
-
-
+#iframe links
 ivrLink <- "http://horizonsrc.maps.arcgis.com/apps/View/index.html?appid=d6dc8d35cfaa44fcb9dbada7de2cf40b"
 
+cat("Get list of collections\n")
 ## Code supporting interface and reactive functions --------
-
 # * Deliver list of collections *
 getCollection <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/boo.hts?service=Hilltop&request=CollectionList",sep=""))
 collections<-sapply(getNodeSet(getCollection,"//Item/../../Collection/@Name"),as.character)
 
+cat("Get site and measurement names from collections\n")
 # * Build dataframe to hold collection, sitename and measurement rows
 s <- sapply(getNodeSet(getCollection,"//Item/SiteName"),xmlValue)
 m <- sapply(getNodeSet(getCollection,"//Item/Measurement"),xmlValue)
@@ -42,6 +42,7 @@ for(i in 1:length(s)){
   cn <- sapply(getNodeSet(getCollection,paste("//Collection[Item/SiteName='",s[i],"' and Item/Measurement='",m[1],"']/@Name",sep="")),as.character)
 }
 
+cat("Get list of sites and lat/lon's\n")
 # * Deliver list of all sites   *
 getSites <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteList&location=LatLong",sep=""))
 site<-getNodeSet(getSites,"//Latitude/../@Name")
@@ -62,7 +63,7 @@ sites <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
 # * Overall dashboard configuration *
 
 #A dashboard has three parts: a header, a sidebar, and a body. 
-
+cat("Create ui\n")
 ui <- dashboardPage(skin="black",
   dashboardHeader(title = "Natural Resource Data Portal"),
   dashboardSidebar(
@@ -150,7 +151,7 @@ ui <- dashboardPage(skin="black",
       # *  Monitoring site map  *
       # -------------------------
       tabItem(tabName = "maps",
-              #h2("Map content"),
+              cat("Map content\n"),
               
               tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
               
@@ -187,7 +188,8 @@ ui <- dashboardPage(skin="black",
                   id="mySiteData",
                   tabPanel("Info",
                            h3("Site information"),
-                           p("Place holder for site metadata. This can be populated by the hilltop call to 'SiteInfo'")
+                           p("Place holder for site metadata. This can be populated by the hilltop call to 'SiteInfo'"),
+                           htmlOutput("siteinfo")
 
                            ),
                   tabPanel("Chart",
@@ -205,8 +207,9 @@ ui <- dashboardPage(skin="black",
       # -------------------------
       tabItem(tabName = "location",
               h2("Monitoring site attributes"),
-              uiOutput("location_choose_site")
- 
+              uiOutput("location_choose_site"),
+              DT::dataTableOutput('measurementList')
+      
       ),
 
 
@@ -223,7 +226,7 @@ ui <- dashboardPage(skin="black",
 
 
 ## server -----------
-
+cat("Define server code")
 server <- function(input, output, session) {
 
   ## modal intro dialog
@@ -320,6 +323,63 @@ server <- function(input, output, session) {
   })
   
   # Reactive functions defined
+  # 2a. Ability to dynamically get list of available measurements for a single site
+  measurementList <- reactive({
+    if(is.null(input$location_siteName)){
+      return()
+    } else {
+      getMeas <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=MeasurementList&Site=",input$location_siteName,sep=""))
+      #getMeas <- xmlInternalTreeParse(paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=MeasurementList&Site=Lake Horowhenua at Buoy",sep=""))
+      # Need to construct a flat table of:
+      #  DataSourceName, MeasurmentName, DataType, Interpolation, Format, Units, Available Start Date, Available End Date
+      #Vector of DataSource Names
+      dname <- sapply(getNodeSet(getMeas,"//DataSource[TSType='StdSeries']/@Name"),as.character)
+      fromDate <- sapply(getNodeSet(getMeas,"//DataSource[TSType='StdSeries']/From"),xmlValue)
+      toDate <- sapply(getNodeSet(getMeas,"//DataSource[TSType='StdSeries']/To"),xmlValue)
+      dataType  <- sapply(getNodeSet(getMeas,"//DataSource[TSType='StdSeries']/DataType"),xmlValue)
+      interp  <- sapply(getNodeSet(getMeas,"//DataSource[TSType='StdSeries']/Interpolation"),xmlValue)
+      #build data.frame
+      ds <- data.frame(dname,fromDate,toDate,dataType,interp, stringsAsFactors=FALSE)
+      ds <- ds[ds$dname!="Campbell Signature",]
+      #for each datasource, get the available measurement names
+      for(i in 1:nrow(ds)){
+        if(i==1){
+          dm <- sapply(getNodeSet(getMeas,paste("//DataSource[TSType='StdSeries' and @Name='",ds$dname[i],"']/Measurement/Units/../@Name",sep="")),as.character)
+          du <- sapply(getNodeSet(getMeas,paste("//DataSource[TSType='StdSeries' and @Name='",ds$dname[i],"']/Measurement/Units",sep="")),xmlValue)
+          df <- data.frame(dm,du, stringsAsFactors=FALSE)
+          df$dname        <-ds$dname[i]
+          df$interp       <-ds$interp[i]
+          df$fromDate     <-ds$fromDate[i]
+          df$toDate       <-ds$toDate[i]
+          names(df) <- c("MeasurementName","Units","DataSourceName","Interpolation","FromDate","ToDate")
+          rm(du,dm)
+        } else {
+          bb <- sapply(getNodeSet(getMeas,paste("//DataSource[TSType='StdSeries' and @Name='",ds$dname[i],"']/Measurement/Units/../@Name",sep="")),as.character)
+          if(length(bb)!=0){
+            bu <- sapply(getNodeSet(getMeas,paste("//DataSource[TSType='StdSeries' and @Name='",ds$dname[i],"']/Measurement/Units",sep="")),xmlValue)
+            bf <- data.frame(bb,bu, stringsAsFactors=FALSE)
+            bf$dname        <-ds$dname[i]
+            bf$interp       <-ds$interp[i]
+            bf$fromDate     <-ds$fromDate[i]
+            bf$toDate       <-ds$toDate[i]
+            names(bf) <- c("MeasurementName","Units","DataSourceName","Interpolation","FromDate","ToDate")
+            df <- rbind(df,bf)
+            rm(bb,bu,bf)
+          }
+        }
+      
+      }
+      df
+      
+      # For this constructed dataframe, it will now be possible to extract all the other necessary
+      # element and attribute values through one further for-loop
+      
+    }
+  })
+  
+  
+  
+  # Reactive functions defined
   # 3. Ability to dynamically get time series data from site/meausurement combo
   GetData <- reactive({
     #Get name of datasource in order to pull measurements correctly
@@ -351,28 +411,21 @@ server <- function(input, output, session) {
   GetSiteInfo <- reactive({
     #Get name of datasource in order to pull measurements correctly
     #Need to use regex to extract text between [ and ]
-    str  <- "Manawatu at Teachers College"
-    str <- input$map_marker_mouseover$id
+    #str  <- "Manawatu at Teachers College"
+    #str <- input$map_marker_mouseover$id
     str <- input$map_marker_click$id
     url <- paste("http://hilltopserver.horizons.govt.nz/data.hts?service=Hilltop&request=SiteInfo&Site=",str,sep="")
 
     getSiteInfo <- xmlInternalTreeParse(url)
     getSiteDF <- xmlToDataFrame(getSiteInfo)
-    df <- getSiteDF
+    df <- getSiteDF[2,]
 
     
   })
   
   
-  
-  # output$IVR <- renderUI({
-  #   iframeLink <- "http://horizonsrc.maps.arcgis.com/apps/View/index.html?appid=d6dc8d35cfaa44fcb9dbada7de2cf40b"
-  #   my_frame <- tags$iframe(src=iframeLink, height="100%",width="100%")
-  #   print(my_frame)
-  #   my_frame
-  # })
-  
-  
+
+  # Output TVP
   output$SiteMeasurementData <- DT::renderDataTable({
     df<-GetData()
     DT::datatable(df, options = list(pageLength = 10))
@@ -472,32 +525,7 @@ server <- function(input, output, session) {
     }
   })
   
-
-  
-  # # When circle is hovered over...show a popup
-  # observeEvent(input$map_marker_mouseover$id, {
-  #   leafletProxy("map") %>% clearPopups()
-  #   pointId <- input$map_marker_mouseover$id
-  #   df <- GetSiteInfo()
-  #   popupText <- paste("<b>",as.character(pointId),"</b><br />",
-  #                      df$Comment[2],
-  #                      "<p style='text-align:center'>[ <a onclick=openTab('shiny-tab-data')>Chart</a> ]   [ Data ]",
-  #                      tags$script(HTML("
-  #                            var openTab = function(tabName){
-  #                                       $('a', $('.sidebar')).each(function() {
-  #                                       if(this.getAttribute('data-value') == tabName) {
-  #                                       this.click()
-  #                                       };
-  #                                       });
-  #                                       }"))
-  #   )
-  #   cat(pointId,"\n")
-  #   lat = sites[sites$site == pointId, 2]
-  #   lng = sites[sites$site == pointId, 3]
-  #   leafletProxy("map") %>% addPopups(lat = lat, lng = lng, popupText,
-  #                                     layerId = "hoverPopup")
-  # })
-  # 
+  # Event marker_click
   observeEvent(input$map_marker_click$id, {
     leafletProxy("map") %>% clearPopups()
     pointId <- input$map_marker_click$id
@@ -521,7 +549,20 @@ server <- function(input, output, session) {
                                          layerId = "hoverPopup")
     })
 
-  
+  output$siteinfo <- renderText({
+    df <- GetSiteInfo()
+    tabHTMLContent <- paste("<table>",
+                              "<tr><td width='20%'>LAWA Site ID</td><td>",df$LawaSiteID,"</td></tr>",
+                              "<tr><td width='20%'>LAWA Site Name</td><td>",df$LawaSiteName,"</td></tr>",
+                              "<tr><td width='20%'>First Synonym</td><td>",df$FirstSynonym,"</td></tr>",
+                              "<tr><td width='20%'>Second Synonyn</td><td>",df$SecondSynonym,"</td></tr>",
+                              "<tr><td width='20%'>Comment</td><td>",df$Comment,"</td></tr>",
+                              "<tr><td width='20%'>Data license</td><td>",df$DataLicense,"</td></tr>",
+                            "</table>",sep="")
+    
+    })
+
+
   output$tsChart <- renderHighchart({
     #Get name of datasource in order to pull measurements correctly
     #Need to use regex to extract text between [ and ]
@@ -566,6 +607,12 @@ server <- function(input, output, session) {
 
   })
 
+  output$measurementList <- DT::renderDataTable({
+    df <- measurementList()
+    DT::datatable(df, options = list(pageLength = 10))
+  })
+  
+  
 }
 
 shinyApp(ui, server)
