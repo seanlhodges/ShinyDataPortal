@@ -76,7 +76,7 @@ ui <- dashboardPage(skin="black",
       ),
       menuItem("Maps", tabName = "maps", icon = icon("globe")),
       menuItem("Data", tabName = "data", icon = icon("th")),
-      menuItem("Location", tabName = "location", icon = icon("map-marker")),
+      menuItem("Stations", tabName = "stations", icon = icon("compass")),
       menuItem("Reports", tabName = "reports", icon = icon("book"))
     )
   ),
@@ -192,10 +192,19 @@ ui <- dashboardPage(skin="black",
                            htmlOutput("siteinfo")
 
                            ),
-                  tabPanel("Chart",
-                           highchartOutput("tsChart")),
-                  tabPanel("Data", 
-                           DT::dataTableOutput('SiteMeasurementData')),
+                  tabPanel("Chart & Data",
+                           fluidRow(
+                             column(width=8,
+                               highchartOutput("tsChart")
+                             ),
+                             column(width=4,
+                                DT::dataTableOutput('SiteMeasurementData')
+                             )
+                           )
+                          ),
+                  #tabPanel("Data", 
+                  #         DT::dataTableOutput('SiteMeasurementData')
+                  #         ),
                   tabPanel("Statistics")
                 ))
               )
@@ -205,13 +214,11 @@ ui <- dashboardPage(skin="black",
       #    Fourth tab content
       # *  Location attributes  *
       # -------------------------
-      tabItem(tabName = "location",
+      tabItem(tabName = "stations",
               h2("Monitoring site attributes"),
               uiOutput("location_choose_site"),
               DT::dataTableOutput('measurementList')
-      
       ),
-
 
       # -------------------------
       #     Fifth tab content
@@ -428,7 +435,11 @@ server <- function(input, output, session) {
   # Output TVP
   output$SiteMeasurementData <- DT::renderDataTable({
     df<-GetData()
-    DT::datatable(df, options = list(pageLength = 10))
+    DT::datatable(df,
+                  extensions = "Buttons",
+                  options = list(dom = "Blrtip", 
+                                 buttons = list('copy','csv','excel','print'))
+                )
   })
   
   ## Outputting reactive function values to ui controls
@@ -609,7 +620,12 @@ server <- function(input, output, session) {
 
   output$measurementList <- DT::renderDataTable({
     df <- measurementList()
-    DT::datatable(df, options = list(pageLength = 10))
+    DT::datatable(df,
+                  extensions = "Buttons",
+                  options = list(dom = "Bfrtip", 
+                                 buttons = list('copy','csv','excel','print')
+                  )
+    )
   })
   
   
