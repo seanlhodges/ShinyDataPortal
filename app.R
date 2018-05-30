@@ -4,7 +4,9 @@
 ## A mimic of the dashboard available through https://envdata.boprc.govt.nz
 ## UI based on shinydashboard template
 ## Script developed by: Sean Hodges
-## Updated on: 13 May 2018
+## Created on: 13 May 2018
+## Updated on: 30 May 2018
+version.number <- "2018.0.25"
 
 ## Purpose: To deliver an interactive dashboard that allows
 ##          access to the publically accessible natural
@@ -78,11 +80,30 @@ ui <- dashboardPage(skin="black",
       menuItem("Data", tabName = "data", icon = icon("th")),
       menuItem("Stations", tabName = "stations", icon = icon("compass")),
       menuItem("Reports", tabName = "reports", icon = icon("book"))
+    ),
+    div(class = "version-class", 
+        hr(),
+        p(date()),
+        p(paste("Natural Resource Data Portal v",version.number,sep="")),
+        p("Horizons Regional Council"),
+        HTML('<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.')
     )
   ),
-
   
   dashboardBody(
+    tags$head(tags$style(HTML('
+                .version-class {
+                                position: fixed;
+                                top: calc(100% - 200px);
+                                font-family: Calabri,Helvetica,Arial,sans-serif;
+                                \\font-weight: bold;
+                                font-size: 11px;
+                                line-height: 0.8em;
+                                text-align: center;
+                                padding-left: 10px;
+                                padding-right: 10px;
+                                }
+              '))),
     tabItems(
       # -------------------------
       #     First tab content
@@ -100,11 +121,11 @@ ui <- dashboardPage(skin="black",
               p(),icon("dashboard",class="highlight"),span("Dashboards access informative screens including this homepage and rainfall maps."),br(),
               p(),icon("globe",class="highlight"),span("Map shows locations and their values overlaid on a map of the Horizons region. A choice of the latest value or a selection of basic statistics at different intervals are available."),br(),
               p(),icon("th",class="highlight"),span("Data Set provides a summary of each dataset available and is further broken up into sub-tabs of Summary, Chart, Grid and Statistics."),br(),
-              p(),icon("map-marker",class="highlight"),span("Location enables you to search for a particular location. Once a location is selected it will display a list of data sets available."),br(),
+              p(),icon("compass",class="highlight"),span("Stations enables you to search for a particular station name. Once a name is selected it will display a list of data sets available."),br(),
               p(),icon("book",class="highlight"),span("Reports displays a list of published reports that can be downloaded as a PDF."),br(),
               
               h3("Quality Coding"),
-              p("Horizons Regional Council undertakes a quality assurance process on all data that adheres to the National Environmental Monitoring Standards (NEMS) including the application of quality codes to data. For information on our quality assurance and grading process refer to  in the top right corner of the website.")
+              p(),span("Horizons Regional Council undertakes a quality assurance process on all data that adheres to the National Environmental Monitoring Standards ("),a(href='http://www.nems.org.nz/', target='_blank', 'NEMS'),span(") including the application of quality codes to data.")
               
       ),
       # -------------------------
@@ -215,7 +236,7 @@ ui <- dashboardPage(skin="black",
       # *  Location attributes  *
       # -------------------------
       tabItem(tabName = "stations",
-              h2("Monitoring site attributes"),
+              h2("Monitoring Stations & available timeseries"),
               uiOutput("location_choose_site"),
               DT::dataTableOutput('measurementList')
       ),
