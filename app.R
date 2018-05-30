@@ -93,7 +93,7 @@ ui <- dashboardPage(skin="black",
   dashboardBody(
     tags$head(tags$style(HTML('
                 .version-class {
-                                position: fixed;
+                                position: absolute;
                                 top: calc(100% - 200px);
                                 font-family: Calabri,Helvetica,Arial,sans-serif;
                                 \\font-weight: bold;
