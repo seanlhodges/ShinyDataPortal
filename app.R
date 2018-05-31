@@ -117,7 +117,7 @@ ui <- dashboardPage(skin="purple",
               tags$style(".highlight {color:#E87722;font-size:1.5em} h2 {text-align:center}"),
               img(src="http://www.horizons.govt.nz/HRC/media/Media/Banner/Lower-Pohangina-Valley.jpg", width="100%"),
               h2("Welcome to the Natural Resource Data Portal"),
-              p("The Webportal system provides access to a range of environmental monitoring locations from across the Horizons region and their collected data. The data presented was collected to support Councils active and historical routine environmental monitoring programmes. There are many more environmental datasets held by Council that are more minor or discrete in nature that cannot easily be presented through the portal. Enquiries related to the Environmental Data Portal should be directed to the Catchment Data team of Council."),
+              p("The Webportal system provides access to a range of environmental monitoring locations from across the Horizons region and their collected data. The data presented was collected to support Councils active and historical routine environmental monitoring programmes. There are many more environmental datasets held by Council that are more minor or discrete in nature that cannot easily be presented through the portal. Enquiries related to the Natural Resources Data Portal should be directed to the Catchment Data team of Council."),
               
               tags$b("Start your search in the  Map section by first selecting the parameter of choice, and then select the appropriate Interval and Statistic"),
               br(),
@@ -177,7 +177,7 @@ ui <- dashboardPage(skin="purple",
       tabItem(tabName = "maps",
               cat("Map content\n"),
               
-              tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
+              tags$style(type = "text/css", "#map {height: calc(100vh - 150px) !important;}"),
               
               uiOutput("choose_collection"),
               leafletOutput("map",width = "100%")
