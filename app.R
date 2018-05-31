@@ -66,8 +66,8 @@ sites <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
 
 #A dashboard has three parts: a header, a sidebar, and a body. 
 cat("Create ui\n")
-ui <- dashboardPage(skin="purple",
-  dashboardHeader(title = "Natural Resource Data Portal"),
+ui <- dashboardPage(skin="black",
+  dashboardHeader(title = "",disable=FALSE),
   dashboardSidebar(
     sidebarMenu(
       menuItem("Dashboards", tabName = "dashboard", icon = icon("dashboard"),
@@ -105,7 +105,37 @@ ui <- dashboardPage(skin="purple",
                                 padding-left: 10px;
                                 padding-right: 10px;
                 }
-                
+                h1             {
+                                font-family: Calabri,Open Sans,Arial,Helvetica Neue,Helvetica,sans-serif;
+                                font-size: 35px;
+                                font-weight: 300;
+                                line-height: 45px;
+                                letter-spacing:0px;
+                                color:white;
+                                padding-left: 22px;
+                                padding-top: 75px;
+                                padding-bottom: 30px;
+                                width: 400px
+                }
+                .bgimg         {
+                                background-image: url("http://www.horizons.govt.nz/HRC/media/Media/Banner/Lower-Pohangina-Valley.jpg");
+                                background-size: cover;
+                                width:100%;
+                                position:relative;
+                                top:0px;
+                                
+                }
+                .main-header .logo .skin-black .navbar .navbar-static-top{
+                                background-color: #000;
+                }
+
+                .logo          {
+                                background-image: url("http://www.horizons.govt.nz/HRC/images/logo-compact.png");
+                                background-size: 75%;
+                                background-repeat:no-repeat;
+                                align: center
+                              }
+
               '))),
     tabItems(
       # -------------------------
@@ -115,8 +145,7 @@ ui <- dashboardPage(skin="purple",
       # -------------------------
       tabItem(tabName = "dashWelcome",
               tags$style(".highlight {color:#E87722;font-size:1.5em} h2 {text-align:center}"),
-              img(src="http://www.horizons.govt.nz/HRC/media/Media/Banner/Lower-Pohangina-Valley.jpg", width="100%"),
-              h2("Welcome to the Natural Resource Data Portal"),
+              div(class="bgimg",h1("Welcome to the Natural Resources Data Portal")),
               p("The Webportal system provides access to a range of environmental monitoring locations from across the Horizons region and their collected data. The data presented was collected to support Councils active and historical routine environmental monitoring programmes. There are many more environmental datasets held by Council that are more minor or discrete in nature that cannot easily be presented through the portal. Enquiries related to the Natural Resources Data Portal should be directed to the Catchment Data team of Council."),
               
               tags$b("Start your search in the  Map section by first selecting the parameter of choice, and then select the appropriate Interval and Statistic"),
