@@ -6,7 +6,7 @@
 ## Script developed by: Sean Hodges
 ## Created on: 13 May 2018
 ## Updated on: 30 May 2018
-version.number <- "2018.0.25"
+version.number <- "2018.0.40"   # reflects Year.Version.GitCommits
 
 ## Purpose: To deliver an interactive dashboard that allows
 ##          access to the publically accessible natural
@@ -66,7 +66,7 @@ sites <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
 
 #A dashboard has three parts: a header, a sidebar, and a body. 
 cat("Create ui\n")
-ui <- dashboardPage(skin="black",
+ui <- dashboardPage(skin="purple",
   dashboardHeader(title = "Natural Resource Data Portal"),
   dashboardSidebar(
     sidebarMenu(
@@ -83,9 +83,11 @@ ui <- dashboardPage(skin="black",
     ),
     div(class = "version-class", 
         hr(),
-        p(date()),
-        p(paste("Natural Resource Data Portal v",version.number,sep="")),
-        p("Horizons Regional Council"),
+        date(),br(),
+        HTML(paste("Natural Resource Data Portal",br(),
+                   "Version:",version.number,br(),
+                   "Horizons Regional Council",br(),
+                   R.Version()$version.string,sep="")),
         HTML('<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.')
     )
   ),
@@ -94,15 +96,16 @@ ui <- dashboardPage(skin="black",
     tags$head(tags$style(HTML('
                 .version-class {
                                 position: absolute;
-                                top: calc(100% - 200px);
+                                top: calc(100% - 220px);
                                 font-family: Calabri,Helvetica,Arial,sans-serif;
                                 \\font-weight: bold;
                                 font-size: 11px;
-                                line-height: 0.8em;
+                                line-height: normal;
                                 text-align: center;
                                 padding-left: 10px;
                                 padding-right: 10px;
-                                }
+                }
+                
               '))),
     tabItems(
       # -------------------------
@@ -111,9 +114,9 @@ ui <- dashboardPage(skin="black",
       # * Description of portal *
       # -------------------------
       tabItem(tabName = "dashWelcome",
-              tags$style(".highlight {color:#E87722;font-size:1.5em}"),
-              
-              h3("Welcome to the Environmental data portal"),
+              tags$style(".highlight {color:#E87722;font-size:1.5em} h2 {text-align:center}"),
+              img(src="images/M208.jpg", width="100%"),
+              h2("Welcome to the Environmental data portal"),
               p("The Webportal system provides access to a range of environmental monitoring locations from across the Horizons region and their collected data. The data presented was collected to support Councils active and historical routine environmental monitoring programmes. There are many more environmental datasets held by Council that are more minor or discrete in nature that cannot easily be presented through the portal. Enquiries related to the Environmental Data Portal should be directed to the Catchment Data team of Council."),
               
               tags$b("Start your search in the  Map section by first selecting the parameter of choice, and then select the appropriate Interval and Statistic"),
@@ -458,7 +461,7 @@ server <- function(input, output, session) {
     df<-GetData()
     DT::datatable(df,
                   extensions = "Buttons",
-                  options = list(dom = "Blrtip", 
+                  options = list(dom = "Bfrtip", 
                                  buttons = list('copy','csv','excel','print'))
                 )
   })
