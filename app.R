@@ -177,7 +177,7 @@ ui <- dashboardPage(skin="purple",
       tabItem(tabName = "maps",
               cat("Map content\n"),
               
-              tags$style(type = "text/css", "#map {height: calc(100vh - 150px) !important;}"),
+              tags$style(type = "text/css", "#map {height: calc(100vh - 240px) !important;}"),
               
               uiOutput("choose_collection"),
               leafletOutput("map",width = "100%")
