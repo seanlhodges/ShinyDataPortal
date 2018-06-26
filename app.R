@@ -67,7 +67,7 @@ sites <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
 #A dashboard has three parts: a header, a sidebar, and a body. 
 cat("Create ui\n")
 ui <- dashboardPage(skin="black",
-  dashboardHeader(title = "",disable=FALSE),
+  dashboardHeader(title = "Natural Resources",disable=FALSE),
   dashboardSidebar(
     sidebarMenu(
       menuItem("Dashboards", tabName = "dashboard", icon = icon("dashboard"),
@@ -93,6 +93,7 @@ ui <- dashboardPage(skin="black",
   ),
   
   dashboardBody(
+    tags$head(tags$script(src="chat.js")),
     tags$head(tags$style(HTML('
                 .version-class {
                                 position: absolute;
