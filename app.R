@@ -67,7 +67,7 @@ sites <-data.frame(site,lat,lon, stringsAsFactors=FALSE)
 #A dashboard has three parts: a header, a sidebar, and a body. 
 cat("Create ui\n")
 ui <- dashboardPage(skin="black",
-  dashboardHeader(title = "Natural Resources",disable=FALSE),
+  dashboardHeader(title = "Sensor Data",disable=FALSE),
   dashboardSidebar(
     sidebarMenu(
       menuItem("Dashboards", tabName = "dashboard", icon = icon("dashboard"),
@@ -76,7 +76,10 @@ ui <- dashboardPage(skin="black",
                menuSubItem("River height warnings", tabName = "dashRiverHeights"),
                menuSubItem("Overall data", tabName = "dashOverall")
       ),
-      menuItem("Maps", tabName = "maps", icon = icon("globe")),
+      menuItem("Maps", tabName = "maps", icon = icon("globe"),
+               menuSubItem("Horizons Envirodata", tabName = "dashEnvirodata"),
+               menuSubItem("Map Analytics", tabName = "dashAnalytics")
+      ),
       menuItem("Data", tabName = "data", icon = icon("th")),
       menuItem("Stations", tabName = "stations", icon = icon("compass")),
       menuItem("Reports", tabName = "reports", icon = icon("book"))
@@ -84,7 +87,7 @@ ui <- dashboardPage(skin="black",
     div(class = "version-class", 
         hr(),
         date(),br(),
-        HTML(paste("Natural Resource Data Portal",br(),
+        HTML(paste("Sensor Data Portal",br(),
                    "Version:",version.number,br(),
                    "Horizons Regional Council",br(),
                    R.Version()$version.string,sep="")),
@@ -146,7 +149,7 @@ ui <- dashboardPage(skin="black",
       # -------------------------
       tabItem(tabName = "dashWelcome",
               tags$style(".highlight {color:#E87722;font-size:1.5em} h2 {text-align:center}"),
-              div(class="bgimg",h1("Welcome to the Natural Resources Data Portal")),
+              div(class="bgimg",h1("Welcome to the Sensor Data Portal")),
               p("The Webportal system provides access to a range of environmental monitoring locations from across the Horizons region and their collected data. The data presented was collected to support Councils active and historical routine environmental monitoring programmes. There are many more environmental datasets held by Council that are more minor or discrete in nature that cannot easily be presented through the portal. Enquiries related to the Natural Resources Data Portal should be directed to the Catchment Data team of Council."),
               
               tags$b("Start your search in the  Map section by first selecting the parameter of choice, and then select the appropriate Interval and Statistic"),
@@ -199,20 +202,33 @@ ui <- dashboardPage(skin="black",
               p("How much data has been delivered today, last week, last month, this year, compared to last year"),
               p("Opportunity for a simple dashboard for statistics on data acquisition.")
       ),
-      
-      # -------------------------
-      #    Second tab content
-      # *  Monitoring site map  *
-      # -------------------------
-      tabItem(tabName = "maps",
+  
+        # -------------------------
+        #     Second tab content
+        #      First sub menu
+        # * Horizons Envirodata Page *
+        # -------------------------
+        tabItem(tabName = "dashAnalytics",
               cat("Map content\n"),
               
               tags$style(type = "text/css", "#map {height: calc(100vh - 240px) !important;}"),
               
               uiOutput("choose_collection"),
               leafletOutput("map",width = "100%")
-              
-      ),
+        ),
+        # -------------------------
+        #     Second tab content
+        #      First sub menu
+        # * Horizons Envirodata Page *
+        # -------------------------
+        tabItem(tabName = "dashEnvirodata",
+                tags$style(".highlight {color:#E87722;font-size:1.5em}"),
+                
+                h3("Horizons Envirodata"),
+                tags$iframe(src="https://envirodata.horizons.govt.nz/", height=700,width="100%")
+    
+        ), 
+
 
       # -------------------------
       #     Third tab content
